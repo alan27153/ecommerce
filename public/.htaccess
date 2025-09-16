@@ -1,0 +1,13 @@
+# Usar index.php como archivo principal
+DirectoryIndex index.php
+
+# Habilitar RewriteEngine
+RewriteEngine On
+RewriteBase /
+
+# Ignorar archivos y carpetas existentes
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Redirigir todo a index.php
+RewriteRule ^(.*)$ index.php [QSA,L]
