@@ -18,21 +18,16 @@
     Inicio
   </a>
 
-
-  <a href="/productos" class="header__link">
-    <i class="fas fa-store header__icon"></i>
-    Productos
-  </a>
-
-  <a href="/login" class="header__link">
+<a href="/ecommerce/client/login" class="header__link">
     <i class="fas fa-sign-in-alt header__icon"></i>
     Iniciar sesión
-  </a>
+</a>
 
-  <a href="/register" class="header__link">
+<a href="/ecommerce/client/register" class="header__link">
     <i class="fas fa-user-plus header__icon"></i>
     Registrarse
-  </a>
+</a>
+
 
   <a href="/carrito" class="header__link">
     <i class="fas fa-shopping-cart header__icon"></i>

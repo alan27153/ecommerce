@@ -1,41 +1,83 @@
 <?php
-// require_once APP_PATH . '/middlewares/AuthMiddleware.php';
-class ProductController {
-    private $db;
+require_once APP_PATH . '/models/Product.php';
 
-    // Constructor: recibe la conexión a la base de datos
-    public function __construct($db) {
-        $this->db = $db;
+class ProductController {
+    private $productModel;
+
+    public function __construct($conn) {
+        $this->productModel = new Product($conn);
     }
 
-    // Método para listar productos con paginación (para AJAX)
-    public function list() {
-        $page   = isset($_GET['page']) ? (int) $_GET['page'] : 1;
-        $limit  = isset($_GET['limit']) ? (int) $_GET['limit'] : 5;
-        $offset = ($page - 1) * $limit;
+    // Verificar rol
+    private function authorize($user) {
+        if (!in_array($user['role'], ['admin', 'editor'])) {
+            http_response_code(403);
+            echo "No tienes permisos para realizar esta acción";
+            exit;
+        }
+    }
 
-        $sql = "SELECT id, name, price_cents 
-                FROM products 
-                ORDER BY id DESC 
-                LIMIT ? OFFSET ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("ii", $limit, $offset);
-        $stmt->execute();
-        $result = $stmt->get_result();
+    // Listar todos los productos
+    public function index($user) {
+        $this->authorize($user);
+        $productos = $this->productModel->getAllWithCategory();
+        require APP_PATH . '/views/admin/products/index.php';
+    }
 
-        $products = [];
-        while ($row = $result->fetch_assoc()) {
-            $products[] = $row;
+    // Mostrar detalle de un producto
+    public function show($id) {
+        $producto = $this->productModel->getById($id);
+
+        if (!$producto) {
+            http_response_code(404);
+            echo "Producto no encontrado";
+            exit;
         }
 
-        // Devolver respuesta JSON al frontend
-        header('Content-Type: application/json');
-        echo json_encode($products);
-        exit;
+        require APP_PATH . '/views/products/show.php';
     }
 
-    // Método para mostrar la vista de productos
-    public function index() {
-        require_once APP_PATH . '/views/products/index.php';
+    // Crear un nuevo producto
+    public function create($user, $data) {
+        $this->authorize($user);
+
+        // Validaciones básicas
+        if (empty($data['name']) || empty($data['category_id']) || !isset($data['price_cents'])) {
+            echo "Faltan datos obligatorios";
+            exit;
+        }
+
+        $this->productModel->create($data);
+        header('Location: /admin/products');
+    }
+
+    // Actualizar producto existente
+    public function update($user, $id, $data) {
+        $this->authorize($user);
+
+        $producto = $this->productModel->getById($id);
+        if (!$producto) {
+            http_response_code(404);
+            echo "Producto no encontrado";
+            exit;
+        }
+
+        $this->productModel->update($id, $data);
+        header('Location: /admin/products');
+    }
+
+    // Eliminar producto
+    public function delete($user, $id) {
+        $this->authorize($user);
+
+        $producto = $this->productModel->getById($id);
+        if (!$producto) {
+            http_response_code(404);
+            echo "Producto no encontrado";
+            exit;
+        }
+
+        $this->productModel->delete($id);
+        header('Location: /admin/products');
     }
 }

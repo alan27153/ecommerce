@@ -26,7 +26,12 @@ class AuthController {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['role']    = $user['role'];
 
-                header("Location: /");
+                // Redirigir según rol
+                if (in_array($user['role'], ['admin','editor'])) {
+                    header("Location: /ecommerce/admin/dashboard");
+                } else {
+                    header("Location: /ecommerce/");
+                }
                 exit;
             } else {
                 $error = "Credenciales inválidas.";
@@ -59,7 +64,7 @@ class AuthController {
             $stmt->bind_param("sss", $name, $email, $hashedPassword);
 
             if ($stmt->execute()) {
-                header("Location: /login");
+                header("Location: /ecommerce/login");
                 exit;
             } else {
                 $error = "Error al registrar usuario.";
@@ -72,7 +77,7 @@ class AuthController {
     public function logout() {
         session_start();
         session_destroy();
-        header("Location: /");
+        header("Location: /ecommerce/");
         exit;
     }
 }

@@ -1,68 +1,128 @@
 <?php
 class Product {
     private $conn;
+    private $table = 'products';
 
-    public function __construct($conn) {
-        $this->conn = $conn;
+    public function __construct($db) {
+        $this->conn = $db;
     }
 
-    /**
-     * Obtener productos con su imagen principal
-     */
-    public function getAllProducts($limit = 12, $offset = 0) {
-        $sql = "
-            SELECT 
-                p.id,
-                p.name,
-                p.slug,
-                p.description,
-                p.price_cents,
-                p.currency,
-                p.stock,
-                COALESCE(pi.image_path, 'assets/images/default.png') AS image
-            FROM products p
-            LEFT JOIN product_images pi 
-                ON p.id = pi.product_id AND pi.is_main = 1
-            WHERE p.active = 1
-            ORDER BY p.created_at DESC
-            LIMIT ? OFFSET ?
-        ";
+    // --------------------------
+    // CRUD Básico
+    // --------------------------
+    public function create($data) {
+        $stmt = $this->conn->prepare(
+            "INSERT INTO products (category_id, name, slug, description, price_cents, currency, stock, active, image_url)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        );
+        $stmt->bind_param(
+            "isssiiiis",
+            $data['category_id'],
+            $data['name'],
+            $data['slug'],
+            $data['description'],
+            $data['price_cents'],
+            $data['currency'],
+            $data['stock'],
+            $data['active'],
+            $data['image_url']
+        );
+        return $stmt->execute();
+    }
 
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bind_param("ii", $limit, $offset);
+    public function update($id, $data) {
+        $stmt = $this->conn->prepare(
+            "UPDATE products SET category_id=?, name=?, slug=?, description=?, price_cents=?, currency=?, stock=?, active=?, image_url=? WHERE id=?"
+        );
+        $stmt->bind_param(
+            "isssiiiisi",
+            $data['category_id'],
+            $data['name'],
+            $data['slug'],
+            $data['description'],
+            $data['price_cents'],
+            $data['currency'],
+            $data['stock'],
+            $data['active'],
+            $data['image_url'],
+            $id
+        );
+        return $stmt->execute();
+    }
+
+    public function delete($id) {
+        $stmt = $this->conn->prepare("DELETE FROM products WHERE id=?");
+        $stmt->bind_param("i", $id);
+        return $stmt->execute();
+    }
+
+    public function getById($id) {
+        $stmt = $this->conn->prepare("SELECT * FROM products WHERE id=? LIMIT 1");
+        $stmt->bind_param("i", $id);
         $stmt->execute();
         $result = $stmt->get_result();
+        return $result->fetch_assoc();
+    }
 
-        $productos = [];
-        while ($row = $result->fetch_assoc()) {
-            // convertir el precio de centavos a decimal
-            $row['price'] = number_format($row['price_cents'] / 100, 2);
-            $productos[] = $row;
+    // --------------------------
+    // Obtener todos los productos activos
+    // --------------------------
+    public function getAll($limit = 12, $offset = 0) {
+        $stmt = $this->conn->prepare(
+            "SELECT id, name, slug, description, price_cents, currency, stock, active, image_url
+             FROM products
+             WHERE active = 1
+             ORDER BY created_at DESC
+             LIMIT ?, ?"
+        );
+        $stmt->bind_param("ii", $offset, $limit);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
+    // --------------------------
+    // Buscar productos por atributos
+    // --------------------------
+    public function findByAttributes($filters = []) {
+        $query = "SELECT p.*, c.name AS category_name 
+                  FROM products p 
+                  LEFT JOIN categories c ON p.category_id = c.id 
+                  WHERE 1=1";
+        $types = '';
+        $values = [];
+
+        if (isset($filters['name'])) {
+            $query .= " AND p.name LIKE ?";
+            $types .= 's';
+            $values[] = '%' . $filters['name'] . '%';
+        }
+        if (isset($filters['stock'])) {
+            $query .= " AND p.stock = ?";
+            $types .= 'i';
+            $values[] = $filters['stock'];
+        }
+        if (isset($filters['active'])) {
+            $query .= " AND p.active = ?";
+            $types .= 'i';
+            $values[] = $filters['active'];
+        }
+        if (isset($filters['category_name'])) {
+            $query .= " AND c.name LIKE ?";
+            $types .= 's';
+            $values[] = '%' . $filters['category_name'] . '%';
         }
 
-        return $productos;
-    }
-
-    /**
-     * Obtener un solo producto por slug
-     */
-    public function getBySlug($slug) {
-        $sql = "
-            SELECT 
-                p.*,
-                COALESCE(pi.image_path, 'assets/images/default.png') AS image
-            FROM products p
-            LEFT JOIN product_images pi 
-                ON p.id = pi.product_id AND pi.is_main = 1
-            WHERE p.slug = ? AND p.active = 1
-            LIMIT 1
-        ";
-
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bind_param("s", $slug);
+        $stmt = $this->conn->prepare($query);
+        if (!empty($values)) {
+            $stmt->bind_param($types, ...$values);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
-
-        return $result->fetch_assoc();
+        $products = [];
+        while ($row = $result->fetch_assoc()) {
+            $products[] = $row;
+        }
+        return $products;
     }
 }
