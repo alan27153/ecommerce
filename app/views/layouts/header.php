@@ -3,15 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tienda Online</title>
+    <title>Home</title>
     <!-- Importar CSS -->
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/ecommerce/assets/css/style.css">
+    <link rel="stylesheet" href="/ecommerce/assets/css/header.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <header>
-        <nav>
-            <a href="/">Inicio</a>
-            <a href="/productos">Productos</a>
-            <a href="/carrito">Carrito</a>
-        </nav>
-    </header>
+<header class="header">
+  <div class="header__logo"></div>
+  <nav class="header__nav">
+  <a href="/ecommerce" class="header__link">
+    <i class="fas fa-home header__icon"></i>
+    Inicio
+  </a>
+
+
+  <a href="/productos" class="header__link">
+    <i class="fas fa-store header__icon"></i>
+    Productos
+  </a>
+
+  <a href="/login" class="header__link">
+    <i class="fas fa-sign-in-alt header__icon"></i>
+    Iniciar sesión
+  </a>
+
+  <a href="/register" class="header__link">
+    <i class="fas fa-user-plus header__icon"></i>
+    Registrarse
+  </a>
+
+  <a href="/carrito" class="header__link">
+    <i class="fas fa-shopping-cart header__icon"></i>
+    Carrito
+  </a>
+
+  </nav>
+</header>
+

@@ -1,0 +1,32 @@
+# ===============================================
+# SEGURIDAD BÁSICA
+# ===============================================
+
+# 1. Desactivar listado de directorios
+Options -Indexes
+
+# 2. Usar index.php como archivo principal
+DirectoryIndex index.php
+
+# 3. Bloquear acceso directo a carpetas internas
+RedirectMatch 403 ^/(config|app|storage|modules|tests|lib)/
+
+# 4. Proteger archivos sensibles (.env, .htaccess, etc.)
+<FilesMatch "^(\.env|\.htaccess|composer\.json|composer\.lock|package\.json)$">
+    Require all denied
+</FilesMatch>
+
+# ===============================================
+# ROUTING (URLs limpias)
+# ===============================================
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Si tu app está en subcarpeta (ej: /ecommerce en XAMPP)
+    RewriteBase /ecommerce/
+
+    # Si no existe archivo ni carpeta, redirigir a index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
