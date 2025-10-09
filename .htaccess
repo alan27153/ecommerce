@@ -1,0 +1,12 @@
+# Habilitar reescritura de URLs
+RewriteEngine On
+
+# Establecer el directorio base (ajústalo si tu carpeta no es /ecommerce)
+RewriteBase /ecommerce/
+
+# Si el archivo o directorio existe físicamente, se sirve normalmente
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Si no existe, redirige todas las peticiones a index.php
+RewriteRule ^ index.php [L,QSA]

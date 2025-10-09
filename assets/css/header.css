@@ -1,0 +1,111 @@
+/* ====================
+   Estilos base (mobile first)
+   ==================== */
+.header {
+  display: flex;
+  flex-direction: column;   /* en móviles va en columna */
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: #222;
+  color: #fff;
+}
+
+.header__logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.header__nav {
+  display: flex;
+  flex-direction: column;   /* menú en vertical para móviles */
+  gap: 0.5rem;
+}
+
+.header__link {
+  text-decoration: none;
+  color: #fff;
+  font-size: 1rem;
+  transition: color 0.2s;
+}
+
+.header__link:hover {
+  color: #ffcc00;  /* efecto hover */
+}
+
+/* ====================
+   Tablets y pantallas medianas
+   ==================== */
+@media (min-width: 768px) {
+  .header {
+    flex-direction: row;     /* logo y menú en fila */
+    justify-content: space-between;
+    padding: 1rem 2rem;
+  }
+
+  .header__nav {
+    flex-direction: row;     /* menú horizontal */
+    gap: 1.5rem;
+  }
+
+  .header__logo {
+    margin-bottom: 0;        /* quitamos espacio extra */
+  }
+}
+
+/* ====================
+   Pantallas grandes
+   ==================== */
+@media (min-width: 1200px) {
+  .header {
+    padding: 1rem 4rem;      /* más espacio en pantallas grandes */
+  }
+
+  .header__logo {
+    font-size: 2rem;         /* logo más grande */
+  }
+
+  .header__link {
+    font-size: 1.1rem;
+  }
+}
+
+
+/* Teléfonos pequeños */
+@media (max-width: 576px) {
+  body {
+    font-size: 0.9rem;
+  }
+  .navbar {
+    flex-direction: column;
+  }
+}
+
+/* Tablets */
+@media (min-width: 577px) and (max-width: 768px) {
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr); /* 2 productos por fila */
+  }
+}
+
+/* Tablets grandes o pantallas pequeñas */
+@media (min-width: 769px) and (max-width: 992px) {
+  .products-grid {
+    grid-template-columns: repeat(3, 1fr); /* 3 productos por fila */
+  }
+}
+
+/* Laptops */
+@media (min-width: 993px) and (max-width: 1200px) {
+  .products-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Pantallas grandes */
+@media (min-width: 1201px) {
+  .products-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
