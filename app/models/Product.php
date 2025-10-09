@@ -1,119 +1,140 @@
 <?php
 class Product {
-    private $conn;
-    private $table = 'products';
+    private PDO $conn;
+    private string $table = 'products';
 
-    public function __construct($db) {
-        $this->conn = $db;
+    public function __construct(PDO $conn) {
+        $this->conn = $conn;
     }
 
     // --------------------------
-    // CRUD Básico
+    // Crear producto
     // --------------------------
-    public function create($data) {
-        $stmt = $this->conn->prepare(
-            "INSERT INTO products (category_id, name, slug, description, price_cents, currency, stock, active, image_url)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        );
-        $stmt->bind_param(
-            "isssiiiis",
-            $data['category_id'],
-            $data['name'],
-            $data['slug'],
-            $data['description'],
-            $data['price_cents'],
-            $data['currency'],
-            $data['stock'],
-            $data['active'],
-            $data['image_url']
-        );
-        return $stmt->execute();
+    public function create(array $data): bool {
+        $stmt = $this->conn->prepare("
+            INSERT INTO products 
+            (category_id, name, slug, description, price_cents, currency, stock, active)
+            VALUES (:category_id, :name, :slug, :description, :price_cents, :currency, :stock, :active)
+        ");
+        return $stmt->execute([
+            ':category_id' => $data['category_id'],
+            ':name' => $data['name'],
+            ':slug' => $data['slug'],
+            ':description' => $data['description'],
+            ':price_cents' => $data['price_cents'],
+            ':currency' => $data['currency'],
+            ':stock' => $data['stock'],
+            ':active' => $data['active']
+        ]);
     }
 
-    public function update($id, $data) {
-        $stmt = $this->conn->prepare(
-            "UPDATE products SET category_id=?, name=?, slug=?, description=?, price_cents=?, currency=?, stock=?, active=?, image_url=? WHERE id=?"
-        );
-        $stmt->bind_param(
-            "isssiiiisi",
-            $data['category_id'],
-            $data['name'],
-            $data['slug'],
-            $data['description'],
-            $data['price_cents'],
-            $data['currency'],
-            $data['stock'],
-            $data['active'],
-            $data['image_url'],
-            $id
-        );
-        return $stmt->execute();
+    // --------------------------
+    // Actualizar producto
+    // --------------------------
+    public function update(int $id, array $data): bool {
+        $stmt = $this->conn->prepare("
+            UPDATE products SET
+                category_id = :category_id,
+                name = :name,
+                slug = :slug,
+                description = :description,
+                price_cents = :price_cents,
+                currency = :currency,
+                stock = :stock,
+                active = :active
+            WHERE id = :id
+        ");
+        $data['id'] = $id;
+        return $stmt->execute([
+            ':category_id' => $data['category_id'],
+            ':name' => $data['name'],
+            ':slug' => $data['slug'],
+            ':description' => $data['description'],
+            ':price_cents' => $data['price_cents'],
+            ':currency' => $data['currency'],
+            ':stock' => $data['stock'],
+            ':active' => $data['active'],
+            ':id' => $data['id']
+        ]);
     }
 
-    public function delete($id) {
-        $stmt = $this->conn->prepare("DELETE FROM products WHERE id=?");
-        $stmt->bind_param("i", $id);
-        return $stmt->execute();
+    // --------------------------
+    // Eliminar producto
+    // --------------------------
+    public function delete(int $id): bool {
+        $stmt = $this->conn->prepare("DELETE FROM products WHERE id = :id");
+        return $stmt->execute([':id' => $id]);
     }
 
-    public function getById($id) {
-        $stmt = $this->conn->prepare("SELECT * FROM products WHERE id=? LIMIT 1");
-        $stmt->bind_param("i", $id);
+    // --------------------------
+    // Obtener un producto por ID (con imagen principal)
+    // --------------------------
+    public function getById(int $id): ?array {
+        $stmt = $this->conn->prepare("
+            SELECT p.*, pi.image_path AS main_image
+            FROM products p
+            LEFT JOIN product_images pi 
+            ON pi.product_id = p.id AND pi.is_main = 1
+            WHERE p.id = :id
+            LIMIT 1
+        ");
+        $stmt->execute([':id' => $id]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ?: null;
+    }
+
+    // --------------------------
+    // Obtener todos los productos activos (con imagen principal)
+    // --------------------------
+    public function getAll(int $limit = 12, int $offset = 0): array {
+        $stmt = $this->conn->prepare("
+            SELECT p.*, pi.image_path AS main_image
+            FROM products p
+            LEFT JOIN product_images pi
+            ON pi.product_id = p.id AND pi.is_main = 1
+            WHERE p.active = 1
+            ORDER BY p.created_at DESC
+            LIMIT :offset, :limit
+        ");
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        return $result->fetch_assoc();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // --------------------------
-    // Obtener todos los productos activos
+    // Buscar productos por filtros (con imagen principal)
     // --------------------------
-    public function getAll($limit = 12, $offset = 0) {
-        $stmt = $this->conn->prepare(
-            "SELECT id, name, slug, description, price_cents, currency, stock, active, image_url
-             FROM products
-             WHERE active = 1
-             ORDER BY created_at DESC
-             LIMIT ?, ?"
-        );
-        $stmt->bind_param("ii", $offset, $limit);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        return $result->fetch_all(MYSQLI_ASSOC);
-    }
+    public function findByAttributes(array $filters = []): array {
+        $query = "
+            SELECT p.*, pi.image_path AS main_image, c.name AS category_name
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_main = 1
+            WHERE 1=1
+        ";
+        $params = [];
 
-    // --------------------------
-    // Buscar productos por atributos
-    // --------------------------
-    
-    public function findByAttributes($filters = []) {
-    $query = "SELECT p.*, c.name AS category_name 
-              FROM products p 
-              LEFT JOIN categories c ON p.category_id = c.id 
-              WHERE 1=1";
-    
-    $params = [];
+        if (!empty($filters['name'])) {
+            $query .= " AND p.name LIKE :name";
+            $params[':name'] = '%' . $filters['name'] . '%';
+        }
+        if (isset($filters['stock'])) {
+            $query .= " AND p.stock = :stock";
+            $params[':stock'] = $filters['stock'];
+        }
+        if (isset($filters['active'])) {
+            $query .= " AND p.active = :active";
+            $params[':active'] = $filters['active'];
+        }
+        if (!empty($filters['category_name'])) {
+            $query .= " AND c.name LIKE :category_name";
+            $params[':category_name'] = '%' . $filters['category_name'] . '%';
+        }
 
-    if (isset($filters['name'])) {
-        $query .= " AND p.name LIKE :name";
-        $params[':name'] = '%' . $filters['name'] . '%';
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    if (isset($filters['stock'])) {
-        $query .= " AND p.stock = :stock";
-        $params[':stock'] = $filters['stock'];
-    }
-    if (isset($filters['active'])) {
-        $query .= " AND p.active = :active";
-        $params[':active'] = $filters['active'];
-    }
-    if (isset($filters['category_name'])) {
-        $query .= " AND c.name LIKE :category_name";
-        $params[':category_name'] = '%' . $filters['category_name'] . '%';
-    }
-
-    $stmt = $this->conn->prepare($query);
-    $stmt->execute($params);
-
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
-
-}
+?>

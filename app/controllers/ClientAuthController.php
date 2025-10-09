@@ -1,6 +1,7 @@
 <?php
-require_once __DIR__ . '/../../config/database.php'; // conexión PDO sin clase
+require_once __DIR__ . '/../../config/database.php'; // conexión PDO
 require_once APP_PATH . '/models/User.php';
+require_once APP_PATH . '/helpers/MailHelper.php';
 
 class ClientAuthController {
 
@@ -16,25 +17,18 @@ class ClientAuthController {
         $this->conn = $conn;
     }
 
-    /**
-     * Muestra el formulario de login.
-     */
+    /** Mostrar formulario de login */
     public function showLogin() {
         require_once APP_PATH . '/views/auth/client/clientLogin.php';
     }
 
-    /**
-     * Muestra el formulario de registro.
-     */
+    /** Mostrar formulario de registro */
     public function showRegister() {
         require_once APP_PATH . '/views/auth/client/clientRegister.php';
     }
 
-    /**
-     * Registro del cliente.
-     */
+    /** Registro del cliente */
     public function register() {
-        // Datos del formulario
         $name = $_POST['name'] ?? '';
         $email = $_POST['email'] ?? '';
         $password = $_POST['password'] ?? '';
@@ -43,39 +37,27 @@ class ClientAuthController {
         $document_number = $_POST['document_number'] ?? '';
         $captchaResponse = $_POST['g-recaptcha-response'] ?? '';
 
-        // Verificar CAPTCHA
-        if (empty($captchaResponse)) {
-            $error = "Por favor completa el captcha correctamente.";
-            require_once APP_PATH . '/views/auth/client/clientRegister.php';
-            return;
-        }
-
-        // Validar con Google reCAPTCHA
-        $secretKey = "6Le-_uArAAAAAKgl5wzRdYpx7nkE2roMZaAxG_le"; // tu clave secreta real
-        $verify = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret={$secretKey}&response={$captchaResponse}");
-        $response = json_decode($verify);
-
-        if (!$response->success) {
-            $error = "Por favor completa el captcha correctamente.";
-            require_once APP_PATH . '/views/auth/client/clientRegister.php';
-            return;
-        }
-
-        // Validar campos vacíos
+        // Validar campos y CAPTCHA
         if (empty($name) || empty($email) || empty($password)) {
-            $error = "Por favor completa todos los campos obligatorios.";
+            $error = "Todos los campos son obligatorios.";
             require_once APP_PATH . '/views/auth/client/clientRegister.php';
             return;
         }
 
-        // Validar si el correo ya está registrado
+        if (!$this->verifyCaptcha($captchaResponse)) {
+            $error = "Por favor completa el captcha correctamente.";
+            require_once APP_PATH . '/views/auth/client/clientRegister.php';
+            return;
+        }
+
+        // Verificar si el correo ya existe
         if (User::emailExists($this->conn, $email)) {
             $error = "Este correo ya está registrado.";
             require_once APP_PATH . '/views/auth/client/clientRegister.php';
             return;
         }
 
-        // Crear usuario
+        // Crear usuario y cliente
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
         $verificationCode = rand(100000, 999999);
 
@@ -87,7 +69,6 @@ class ClientAuthController {
             return;
         }
 
-        // Crear cliente asociado
         $stmt = $this->conn->prepare("
             INSERT INTO clients (user_id, address, phone, document_number)
             VALUES (:user_id, :address, :phone, :document_number)
@@ -98,16 +79,64 @@ class ClientAuthController {
         $stmt->bindParam(':document_number', $document_number);
         $stmt->execute();
 
-        // Enviar código de verificación por correo (puedes implementar PHPMailer)
-        // mail($email, "Código de verificación", "Tu código es: $verificationCode");
+        // Enviar código de verificación
+        MailHelper::sendVerificationEmail($email, $verificationCode);
 
-        $success = "Registro exitoso. Revisa tu correo para verificar tu cuenta.";
-        require_once APP_PATH . '/views/auth/client/clientLogin.php';
+        // Redirigir a la vista de verificación con correo
+        header("Location: /ecommerce/client/verify?email=" . urlencode($email));
+        exit;
     }
 
-    /**
-     * Inicio de sesión del cliente.
-     */
+    /** Mostrar formulario de verificación */
+    public function showVerifyForm() {
+        $email = $_GET['email'] ?? null;
+        $error = $_GET['error'] ?? null;
+        $success = $_GET['success'] ?? null;
+
+        require APP_PATH . '/views/auth/client/verify.php';
+    }
+
+    /** Verificar el código enviado */
+    public function verifyAccount() {
+        $email = $_POST['email'] ?? '';
+        $code = $_POST['code'] ?? '';
+
+        if (empty($email) || empty($code)) {
+            $error = "Faltan datos para verificar la cuenta.";
+            header("Location: /ecommerce/client/verify?email=" . urlencode($email) . "&error=" . urlencode($error));
+            exit;
+        }
+
+        $user = User::findByEmail($this->conn, $email);
+
+        if (!$user) {
+            $error = "No se encontró una cuenta con ese correo.";
+            header("Location: /ecommerce/client/verify?email=" . urlencode($email) . "&error=" . urlencode($error));
+            exit;
+        }
+
+        if ($user['verified'] == 1) {
+            header("Location: /ecommerce/client/login?verified=1");
+            exit;
+        }
+
+        if ($user['verification_code'] != $code) {
+            $error = "Código incorrecto.";
+            header("Location: /ecommerce/client/verify?email=" . urlencode($email) . "&error=" . urlencode($error));
+            exit;
+        }
+
+        // Marcar como verificado
+        $stmt = $this->conn->prepare("UPDATE users SET verified = 1 WHERE id = :id");
+        $stmt->bindParam(':id', $user['id'], PDO::PARAM_INT);
+        $stmt->execute();
+
+        // Redirigir a login con éxito
+        header("Location: /ecommerce/client/login?verified=1");
+        exit;
+    }
+
+    /** Login del cliente */
     public function login() {
         $email = $_POST['email'] ?? '';
         $password = $_POST['password'] ?? '';
@@ -117,10 +146,11 @@ class ClientAuthController {
         if ($user && password_verify($password, $user['password'])) {
             if ($user['verified'] == 0) {
                 $error = "Tu cuenta no está verificada.";
-                require_once APP_PATH . '/views/auth/client/clientLogin.php';
+                require APP_PATH . '/views/auth/client/clientLogin.php';
                 return;
             }
 
+            session_start();
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_name'] = $user['name'];
             $_SESSION['user_role'] = $user['role'];
@@ -129,17 +159,28 @@ class ClientAuthController {
             exit;
         } else {
             $error = "Correo o contraseña incorrectos.";
-            require_once APP_PATH . '/views/auth/client/clientLogin.php';
+            require APP_PATH . '/views/auth/client/clientLogin.php';
         }
     }
 
-    /**
-     * Cierra la sesión.
-     */
+    /** Logout */
     public function logout() {
+        session_start();
         session_destroy();
         header("Location: /ecommerce/");
         exit;
     }
+
+    /** Verificar Google reCAPTCHA */
+    private function verifyCaptcha($captchaResponse): bool {
+        $secretKey = "6Le-_uArAAAAAKgl5wzRdYpx7nkE2roMZaAxG_le";
+        if (empty($captchaResponse)) return false;
+
+        $verify = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret={$secretKey}&response={$captchaResponse}");
+        $response = json_decode($verify);
+        return $response->success ?? false;
+    }
+
+
 }
 ?>

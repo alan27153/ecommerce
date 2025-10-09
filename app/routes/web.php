@@ -78,6 +78,15 @@ switch ($uri) {
         $authController->logout();
         break;
 
+    case '/verify':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $clientAuthController->verifyAccount(); // método real
+        } else {
+            $clientAuthController->showVerifyForm(); // vista real
+        }
+        break;
+
+
     // ==========================
     // LOGIN / REGISTRO CLIENTE
     // ==========================

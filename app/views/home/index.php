@@ -2,8 +2,8 @@
     <?php if (!empty($productos)): ?>
         <?php foreach ($productos as $p): ?>
             <div class="product-card" onclick="window.location.href='/product/<?= $p['id'] ?>'">
-                <?php if (!empty($p['image_url'])): ?>
-                    <img src="<?= htmlspecialchars($p['image_url']) ?>" alt="<?= htmlspecialchars($p['name']) ?>" class="product-image">
+                <?php if (!empty($p['main_image'])): ?>
+                    <img src="<?= htmlspecialchars($p['main_image']) ?>" alt="<?= htmlspecialchars($p['name']) ?>" class="product-image">
                 <?php endif; ?>
                 <h3><?= htmlspecialchars($p['name']) ?></h3>
                 <p>Precio: <?= htmlspecialchars($p['currency']) . ' ' . number_format($p['price_cents'] / 100, 2) ?></p>
