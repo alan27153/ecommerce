@@ -61,3 +61,6 @@ Asegúrate de tener instalado:
     git commit -m "He realizado un cambio xxx"
     git push origin rama1-nueva-funcionalidad
 
+# Esto es para testear PHP Unit desde replite en la terminal
+    ```bash
+    vendor/bin/phpunit --colors=auto tests/UserTest.php

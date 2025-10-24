@@ -1,124 +1,166 @@
 <?php
-namespace App\Models;
+class Order {
+    private $db;
 
-use PDO;
-use PDOException;
-
-class Order
-{
-    private $pdo;
-
-    public function __construct(PDO $pdo)
-    {
-        $this->pdo = $pdo;
+    public function __construct($db) {
+        $this->db = $db;
     }
 
-    // 1. Crear pedido
-    public function create($userId, $totalCents, $currency = 'PEN')
-    {
+    /**
+     * Crea una nueva orden validando los precios desde la base de datos
+     */
+    public function create($userId, $cartItems, $paymentMethod, $deliveryMethod, $shippingData = [], $currency = 'PEN') {
         try {
-            $stmt = $this->pdo->prepare("
+            $this->db->beginTransaction();
+
+            $totalCents = 0;
+            $validatedItems = [];
+
+            // ✅ Validar precios desde la BD para evitar manipulación del cliente
+            foreach ($cartItems as $item) {
+                $stmt = $this->db->prepare("SELECT id, price_cents, stock FROM products WHERE id = ? AND active = 1");
+                $stmt->execute([$item['id']]);
+                $product = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$product) {
+                    throw new Exception("Producto no encontrado o inactivo (ID {$item['id']})");
+                }
+
+                if ($item['quantity'] > $product['stock']) {
+                    throw new Exception("Stock insuficiente para {$item['name']}");
+                }
+
+                $price = (int) $product['price_cents'];
+                $quantity = (int) $item['quantity'];
+                $subtotal = $price * $quantity;
+
+                $validatedItems[] = [
+                    'product_id' => $product['id'],
+                    'quantity' => $quantity,
+                    'price_cents' => $price
+                ];
+
+                $totalCents += $subtotal;
+            }
+
+            // ✅ Insertar orden principal
+            $stmt = $this->db->prepare("
                 INSERT INTO orders (user_id, total_cents, currency, status)
-                VALUES (:user_id, :total_cents, :currency, 'pending')
+                VALUES (?, ?, ?, 'pending')
             ");
-            $stmt->execute([
-                ':user_id' => $userId,
-                ':total_cents' => $totalCents,
-                ':currency' => $currency
-            ]);
+            $stmt->execute([$userId, $totalCents, $currency]);
+            $orderId = $this->db->lastInsertId();
 
-            return $this->pdo->lastInsertId(); // ID del pedido recién creado
-        } catch (PDOException $e) {
-            error_log("Error creando pedido: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    // 2. Agregar producto al pedido
-    public function addItem($orderId, $productId, $quantity, $priceCents)
-    {
-        try {
-            $stmt = $this->pdo->prepare("
+            // ✅ Insertar ítems del pedido
+            $stmtItem = $this->db->prepare("
                 INSERT INTO order_items (order_id, product_id, quantity, price_cents)
-                VALUES (:order_id, :product_id, :quantity, :price_cents)
+                VALUES (?, ?, ?, ?)
             ");
-            return $stmt->execute([
-                ':order_id' => $orderId,
-                ':product_id' => $productId,
-                ':quantity' => $quantity,
-                ':price_cents' => $priceCents
-            ]);
-        } catch (PDOException $e) {
-            error_log("Error agregando item al pedido: " . $e->getMessage());
-            return false;
+            foreach ($validatedItems as $vi) {
+                $stmtItem->execute([$orderId, $vi['product_id'], $vi['quantity'], $vi['price_cents']]);
+            }
+
+            // ✅ Insertar método de pago
+            $stmtPay = $this->db->prepare("
+                INSERT INTO payments (order_id, method, amount_cents, currency, status)
+                VALUES (?, ?, ?, ?, 'pending')
+            ");
+            $stmtPay->execute([$orderId, $paymentMethod, $totalCents, $currency]);
+
+            // ✅ Registrar dirección de envío si aplica
+            if ($deliveryMethod === 'envio') {
+                $this->saveShippingInfo($orderId, $shippingData);
+            }
+
+            $this->db->commit();
+            return $orderId;
+
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            throw new Exception("Error al crear la orden: " . $e->getMessage());
         }
     }
 
-    // 3. Obtener pedido por ID
-    public function findById($id)
-    {
-        $stmt = $this->pdo->prepare("
-            SELECT * FROM orders WHERE id = :id LIMIT 1
+    /**
+     * Guarda la dirección de envío en una tabla aparte (si decides crearla)
+     */
+    private function saveShippingInfo($orderId, $data) {
+ 
+        $stmt = $this->db->prepare("
+            INSERT INTO order_shipping (order_id, address, region, province, city, postal_code)
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([':id' => $id]);
+        $stmt->execute([
+            $orderId,
+            $data['address'] ?? null,
+            $data['region'] ?? null,
+            $data['province'] ?? null,
+            $data['city'] ?? null,
+            $data['postal_code'] ?? null
+        ]);
+    }
+
+    /** Obtener pedido por ID con detalles */
+    public function getOrderById($id) {
+        $stmt = $this->db->prepare("SELECT * FROM orders WHERE id = :id");
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    // 4. Obtener pedidos de un usuario
-    public function findByUser($userId)
-    {
-        $stmt = $this->pdo->prepare("
-            SELECT * FROM orders WHERE user_id = :user_id ORDER BY created_at DESC
-        ");
-        $stmt->execute([':user_id' => $userId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    public function getOrdersByUser($userId) {
+        $sql = "
+            SELECT o.*, pay.voucher_path, pay.method AS payment_method
+            FROM orders o
+            LEFT JOIN payments pay ON o.id = pay.order_id
+            WHERE o.user_id = :user_id
+            ORDER BY 
+                CASE o.status
+                    WHEN 'shipped' THEN 1
+                    WHEN 'paid' THEN 2
+                    WHEN 'pending' THEN 3
+                    WHEN 'completed' THEN 4
+                    WHEN 'cancelled' THEN 5
+                    ELSE 6
+                END,
+                o.created_at DESC
+        ";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['user_id' => $userId]);
+        $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($orders as &$order) {
+            $stmtItems = $this->db->prepare("
+                SELECT 
+                    oi.*, 
+                    pr.name AS product_name,
+                    COALESCE(
+                        (SELECT image_path FROM product_images WHERE product_id = pr.id AND is_main = 1 LIMIT 1),
+                        (SELECT image_path FROM product_images WHERE product_id = pr.id LIMIT 1)
+                    ) AS image_path
+                FROM order_items oi
+                JOIN products pr ON oi.product_id = pr.id
+                WHERE oi.order_id = :order_id
+            ");
+            $stmtItems->execute(['order_id' => $order['id']]);
+            $order['items'] = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        return $orders;
     }
 
-    // 5. Obtener items de un pedido
-    public function getItems($orderId)
-    {
-        $stmt = $this->pdo->prepare("
-            SELECT oi.*, p.name 
-            FROM order_items oi
-            INNER JOIN products p ON oi.product_id = p.id
-            WHERE oi.order_id = :order_id
+
+    public function updateVoucherPath($orderId, $voucherUrl) {
+        $stmt = $this->db->prepare("
+            UPDATE payments 
+            SET voucher_path = :voucher_path 
+            WHERE order_id = :order_id
         ");
-        $stmt->execute([':order_id' => $orderId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->bindParam(':voucher_path', $voucherUrl, PDO::PARAM_STR);
+        $stmt->bindParam(':order_id', $orderId, PDO::PARAM_INT);
+        $stmt->execute();
     }
 
-    // 6. Actualizar estado del pedido
-    public function updateStatus($orderId, $status)
-    {
-        $stmt = $this->pdo->prepare("
-            UPDATE orders SET status = :status, updated_at = NOW()
-            WHERE id = :id
-        ");
-        return $stmt->execute([
-            ':id' => $orderId,
-            ':status' => $status
-        ]);
-    }
 
-    // 7. Relacionar pago
-    public function setPayment($orderId, $paymentId)
-    {
-        $stmt = $this->pdo->prepare("
-            UPDATE orders SET payment_id = :payment_id, updated_at = NOW()
-            WHERE id = :id
-        ");
-        return $stmt->execute([
-            ':id' => $orderId,
-            ':payment_id' => $paymentId
-        ]);
-    }
-
-    // 8. Eliminar pedido
-    public function delete($id)
-    {
-        $stmt = $this->pdo->prepare("
-            DELETE FROM orders WHERE id = :id
-        ");
-        return $stmt->execute([':id' => $id]);
-    }
 }
+?>

@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="/ecommerce/assets/css/product.css">
 </head>
 <body>
-    <?php if(isset($error)) echo "<p style='color:red;'>$error</p>"; ?>
+
     <form method="POST" action="">
     <h2>Login Cliente</h2>
 
@@ -17,7 +17,8 @@
         <input type="password" name="password" required>
         <br><br>
         <button type="submit">Iniciar Sesión</button>
-            <p>¿No tienes cuenta? <a href="/ecommerce/client/register">Regístrate</a></p>
+        <?php if(isset($error)) echo "<p style='color:red;'>$error</p>"; ?>
+        <p>¿No tienes cuenta?<a href="/ecommerce/client/register">Regístrate</a></p>
 
     </form>
 </body>

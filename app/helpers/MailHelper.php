@@ -5,11 +5,6 @@ use PHPMailer\PHPMailer\Exception;
 // ✅ Si usas Composer:
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-// ✅ Si subiste PHPMailer manualmente, descomenta las siguientes líneas:
-// require_once __DIR__ . '/../../libs/PHPMailer/src/PHPMailer.php';
-// require_once __DIR__ . '/../../libs/PHPMailer/src/SMTP.php';
-// require_once __DIR__ . '/../../libs/PHPMailer/src/Exception.php';
-
 class MailHelper {
 
     /**

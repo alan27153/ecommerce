@@ -33,7 +33,7 @@ class ProductController {
             echo "Producto no encontrado";
             exit;
         }
-
+        require APP_PATH . '/views/layouts/header.php';
         require APP_PATH . '/views/products/show.php';
     }
 

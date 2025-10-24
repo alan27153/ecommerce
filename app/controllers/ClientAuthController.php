@@ -2,13 +2,18 @@
 require_once __DIR__ . '/../../config/database.php'; // conexión PDO
 require_once APP_PATH . '/models/User.php';
 require_once APP_PATH . '/helpers/MailHelper.php';
+require_once APP_PATH . '/helpers/AuthHelper.php';
+
 
 class ClientAuthController {
 
     private PDO $conn;
+    private $authHelper;
+
 
     public function __construct() {
         global $conn;
+        $this->authHelper = new AuthHelper();
 
         if (!isset($conn)) {
             die("❌ Error: No se pudo establecer la conexión a la base de datos.");
@@ -165,7 +170,6 @@ class ClientAuthController {
 
     /** Logout */
     public function logout() {
-        session_start();
         session_destroy();
         header("Location: /ecommerce/");
         exit;
@@ -179,6 +183,26 @@ class ClientAuthController {
         $verify = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret={$secretKey}&response={$captchaResponse}");
         $response = json_decode($verify);
         return $response->success ?? false;
+    }
+
+    public function profile() {
+        $this->authHelper->require_login();
+
+        $userId = $_SESSION['user_id'];
+
+        // Obtener datos del usuario y del cliente
+        $stmt = $this->conn->prepare("
+            SELECT u.id, u.name, u.email, u.role, c.address, c.phone, c.document_number, u.created_at
+            FROM users u
+            LEFT JOIN clients c ON u.id = c.user_id
+            WHERE u.id = :id
+        ");
+        $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        require_once APP_PATH . '/views/layouts/header.php';
+        require_once APP_PATH . '/views/profile/index.php';
     }
 
 

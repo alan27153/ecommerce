@@ -18,20 +18,35 @@
     Inicio
   </a>
 
-<a href="/ecommerce/client/login" class="header__link">
-    <i class="fas fa-sign-in-alt header__icon"></i>
-    Iniciar sesión
-</a>
+  <a href="/ecommerce/client/login" class="header__link">
+      <i class="fas fa-sign-in-alt header__icon"></i>
+      Iniciar sesión
+  </a>
 
-<a href="/ecommerce/client/register" class="header__link">
-    <i class="fas fa-user-plus header__icon"></i>
-    Registrarse
-</a>
+  <a href="/ecommerce/client/register" class="header__link">
+      <i class="fas fa-user-plus header__icon"></i>
+      Registrarse
+  </a>
 
 
-  <a href="/carrito" class="header__link">
+  <a href="/ecommerce/cart" class="header__link">
     <i class="fas fa-shopping-cart header__icon"></i>
     Carrito
+  </a>
+
+  <a href="/ecommerce/orders" class="header__link">
+    <i class="fa-solid fa-box"></i>
+    Pedidos
+  </a>
+
+  <a href="/ecommerce/profile" class="header__link">
+    <i class="fa-solid fa-user"></i>
+    Perfil
+  </a>
+
+  <a href="/ecommerce/logout" class="header__link">
+    <i class="fa-solid fa-right-from-bracket"></i>\
+    Cerrar sesión
   </a>
 
   </nav>

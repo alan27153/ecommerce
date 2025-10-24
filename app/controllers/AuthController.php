@@ -10,6 +10,7 @@ class AuthController {
 
     public function __construct($conn) {
         $this->conn = $conn;
+
     }
 
     /* ==========================================================
@@ -41,9 +42,12 @@ class AuthController {
                     return;
                 }
 
+            if (session_status() === PHP_SESSION_NONE) {
                 session_start();
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['role']    = $user['role'];
+            }
+
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['role']    = $user['role'];
 
                 // Redirigir según rol
                 if (in_array($user['role'], ['admin', 'editor'])) {
@@ -178,7 +182,6 @@ class AuthController {
        LOGOUT
     ========================================================== */
     public function logout() {
-        session_start();
         session_destroy();
         header("Location: /ecommerce/");
         exit;

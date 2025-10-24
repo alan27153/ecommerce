@@ -14,9 +14,10 @@ class HomeController {
     // Página principal con productos
     public function index() {
         // Obtener productos iniciales activos (ej: 12)
-        $productos = $this->productModel->findByAttributes(['active' => 1]);
+        $productos = $this->productModel->getAll();
 
-        // Renderizar la vista completa: header + contenido + footer
+        // $productos = $this->productModel->findByAttributes(['active' => 1]);
+
         require APP_PATH . '/views/layouts/header.php';
         require APP_PATH . '/views/home/index.php';
         require APP_PATH . '/views/layouts/footer.php';

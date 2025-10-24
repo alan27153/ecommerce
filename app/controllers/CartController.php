@@ -20,6 +20,7 @@ class CartController {
 
         // Pasar el carrito a la vista
         $cartItems = $_SESSION['cart'];
+        require_once APP_PATH . '/views/layouts/header.php';
         require_once APP_PATH . '/views/cart/index.php';
     }
 

@@ -67,14 +67,17 @@ class Product {
     }
 
     // --------------------------
-    // Obtener un producto por ID (con imagen principal)
+    // Obtener un producto por ID (con imagen principal y nombre de categoría)
     // --------------------------
     public function getById(int $id): ?array {
         $stmt = $this->conn->prepare("
-            SELECT p.*, pi.image_path AS main_image
+            SELECT 
+                p.*, 
+                c.name AS category_name, 
+                pi.image_path
             FROM products p
-            LEFT JOIN product_images pi 
-            ON pi.product_id = p.id AND pi.is_main = 1
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_main = 1
             WHERE p.id = :id
             LIMIT 1
         ");
@@ -83,24 +86,30 @@ class Product {
         return $result ?: null;
     }
 
+
     // --------------------------
-    // Obtener todos los productos activos (con imagen principal)
+    // Obtener todos los productos activos (con imagen principal y el nombre de la categoria)
     // --------------------------
-    public function getAll(int $limit = 12, int $offset = 0): array {
-        $stmt = $this->conn->prepare("
-            SELECT p.*, pi.image_path AS main_image
-            FROM products p
-            LEFT JOIN product_images pi
-            ON pi.product_id = p.id AND pi.is_main = 1
-            WHERE p.active = 1
-            ORDER BY p.created_at DESC
-            LIMIT :offset, :limit
-        ");
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
+    public function getAll(int $limit = 50, int $offset = 0): array {
+    $stmt = $this->conn->prepare("
+        SELECT 
+            p.*, 
+            c.name AS category_name,
+            pi.image_path AS main_image
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_main = 1
+        WHERE p.active = 1
+        ORDER BY p.created_at DESC
+        LIMIT :limit OFFSET :offset
+    ");
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
 
     // --------------------------
     // Buscar productos por filtros (con imagen principal)

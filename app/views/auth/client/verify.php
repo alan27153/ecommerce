@@ -4,36 +4,34 @@
     <meta charset="UTF-8">
     <title>Verificar cuenta</title>
 </head>
-<body>
-    <h2>Verificación de cuenta</h2>
     <div class="verify-container">
-    <h1>Verificación de cuenta</h1>
-    <p>Ingresa el código que te enviamos a tu correo electrónico.</p>
+        <h1>Verificación de cuenta</h1>
+        <p>Ingresa el código que te enviamos a tu correo electrónico.</p>
 
-    <?php if (!empty($error)): ?>
-        <div class="alert error"><?= htmlspecialchars($error) ?></div>
-    <?php endif; ?>
+        <?php if (!empty($error)): ?>
+            <div class="alert error"><?= htmlspecialchars($error) ?></div>
+        <?php endif; ?>
 
-    <?php if (!empty($success)): ?>
-        <div class="alert success"><?= htmlspecialchars($success) ?></div>
-    <?php endif; ?>
+        <?php if (!empty($success)): ?>
+            <div class="alert success"><?= htmlspecialchars($success) ?></div>
+        <?php endif; ?>
 
- <form method="POST" action="/ecommerce/client/verify">
-    <input type="hidden" name="email" value="<?= htmlspecialchars($email ?? '') ?>">
-    <input type="text" name="code" placeholder="Código de verificación" required>
-    <button type="submit">Verificar</button>
-    </form>
+        <form method="POST" action="/ecommerce/client/verify">
+            <input type="hidden" name="email" value="<?= htmlspecialchars($email ?? '') ?>">
+            <input type="text" name="code" placeholder="Código de verificación" required>
+            <button type="submit">Verificar</button>
+        </form>
+    </div>
 
-</div>
-
-</body>
 <style>
     /* ==============================
    Estilo para la vista de verificación
    ============================== */
 body {
     font-family: 'Poppins', sans-serif;
-    background: linear-gradient(135deg, #3b82f6, #06b6d4);
+
+    
+    
     color: #333;
     display: flex;
     justify-content: center;

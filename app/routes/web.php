@@ -1,10 +1,10 @@
 <?php
-// require_once CONFIG_PATH . '/database.php';
 require_once APP_PATH . '/controllers/HomeController.php';
 require_once APP_PATH . '/controllers/ProductController.php';
 require_once APP_PATH . '/controllers/CartController.php';
 require_once APP_PATH . '/controllers/AuthController.php';
-require_once APP_PATH . '/controllers/ClientAuthController.php'; // NUEVO
+require_once APP_PATH . '/controllers/ClientAuthController.php';
+require_once APP_PATH . '/controllers/OrderController.php';
 require_once APP_PATH . '/middlewares/AuthMiddleware.php';
 
 // Detectar la URI solicitada
@@ -28,64 +28,68 @@ $homeController       = new HomeController($conn);
 $productController    = new ProductController($conn);
 $cartController       = new CartController($conn);
 $authController       = new AuthController($conn);
-$clientAuthController = new ClientAuthController($conn); // NUEVO
+$clientAuthController = new ClientAuthController($conn);
+$orderController = new  OrderController($conn);
+
 
 // ==========================
 // RUTAS DE FRONTEND
 // ==========================
 switch ($uri) {
+
     // Home
     case '/':
     case '/index.php':
         $homeController->index();
         break;
 
-    // Ver producto por ID
+    // Ver la vista del detalle del producto products/show.php
     case (preg_match('/^\/product\/(\d+)$/', $uri, $matches) ? true : false):
-        $productController->show($matches[1]);
-        break;
+    $productId = $matches[1];
+    $productController->show($productId);
+    break; 
 
     // Listar todos los productos (para AJAX o frontend)
     case '/products/load':
         $productController->list();
         break;
 
-    // Carrito
+    // Vista carrito cart/index.php
     case '/cart':
         $cartController->index();
         break;
 
-    // ==========================
-    // LOGIN / REGISTRO ADMIN
-    // ==========================
-    case '/login':
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $authController->login();
-        } else {
-            $authController->showLogin();
-        }
+    // Vista de pedidos orders/index.php
+    case '/orders':
+        $orderController->myOrders();
         break;
 
-    case '/register':
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $authController->register();
-        } else {
-            $authController->showRegister();
-        }
+    // Subir voucher orders/index.php
+    case '/order/uploadVoucher':
+        $orderController->uploadVoucher();
         break;
 
-    case '/logout':
-        $authController->logout();
+    // Vista perfil de cliente profile/index.php
+    case '/profile':
+        require_once APP_PATH . '/controllers/ClientAuthController.php';
+        $controller = new ClientAuthController();
+        $controller->profile();
         break;
 
-    case '/verify':
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $clientAuthController->verifyAccount(); // método real
-        } else {
-            $clientAuthController->showVerifyForm(); // vista real
-        }
+
+    // Vista de checkout despues del carrito checkout/index.php
+    case '/checkout':
+        $orderController->index();
         break;
 
+    // Vista de checkout para enviar la captura de pago checkout/success.php
+    case '/checkout/confirm':
+        $orderController->store();
+        break;
+
+    case '/checkout/success':
+        $orderController->success();
+        break;
 
     // ==========================
     // LOGIN / REGISTRO CLIENTE
@@ -120,6 +124,40 @@ switch ($uri) {
             $clientAuthController->showVerifyForm();
         }
         break;
+
+    // ==========================
+    // LOGIN / REGISTRO USUARIO
+    // ==========================
+    case '/login':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $authController->login();
+        } else {
+            $authController->showLogin();
+        }
+        break;
+
+    case '/register':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $authController->register();
+        } else {
+            $authController->showRegister();
+        }
+        break;
+
+    case '/logout':
+        $authController->logout();
+        break;
+
+    case '/verify':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $clientAuthController->verifyAccount(); // método real
+        } else {
+            $clientAuthController->showVerifyForm(); // vista real
+        }
+        break;
+
+
+    
 
 
     // ==========================
