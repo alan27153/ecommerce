@@ -156,47 +156,12 @@ switch ($uri) {
         }
         break;
 
-
-    
-
-
     // ==========================
-    // ADMIN PANEL
+    // RUTAS DEL PANEL ADMINISTRATIVO
     // ==========================
-    case '/admin/products':
-        AuthMiddleware::checkRole(['admin', 'editor']);
-        $productController->index();
-        break;
 
-    case '/admin/products/create':
-        AuthMiddleware::checkRole(['admin', 'editor']);
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $productController->create($_POST['user'], $_POST);
-        } else {
-            require APP_PATH . '/views/admin/products/create.php';
-        }
-        break;
-
-    case (preg_match('/^\/admin\/products\/edit\/(\d+)$/', $uri, $matches) ? true : false):
-        AuthMiddleware::checkRole(['admin', 'editor']);
-        $id = $matches[1];
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $productController->update($_POST['user'], $id, $_POST);
-        } else {
-            $producto = $productController->show($id);
-            require APP_PATH . '/views/admin/products/edit.php';
-        }
-        break;
-
-    case (preg_match('/^\/admin\/products\/delete\/(\d+)$/', $uri, $matches) ? true : false):
-        AuthMiddleware::checkRole(['admin', 'editor']);
-        $id = $matches[1];
-        $productController->delete($_POST['user'] ?? null, $id);
-        break;
-
-    case '/admin/dashboard':
-        AuthMiddleware::checkRole(['admin','editor']);
-        require APP_PATH . '/views/admin/dashboard.php';
+    case (preg_match('/^\/admin(\/.*)?$/', $uri) ? true : false):
+        require APP_PATH . '/routes/admin.php';
         break;
 
     default:

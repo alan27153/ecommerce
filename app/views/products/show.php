@@ -17,6 +17,9 @@
         <button type="submit">Agregar al carrito</button>
     </form>
 
+        <a href="https://hotmart.com/es/marketplace/productos/capacitacion-en-seguridad-y-prevencion-de-robos/A85688968J "><button type="submit">Comprar</button></a>
+    
+
 
 </div>
 

@@ -5,8 +5,10 @@
 define('BASE_PATH', __DIR__);
 define('APP_PATH', BASE_PATH . '/app');
 define('CONFIG_PATH', BASE_PATH . '/config');
+define('ADMIN_APP_PATH', BASE_PATH . '/admin/app');
 define('LIB_PATH', BASE_PATH . '/lib');
 define('ASSETS_PATH', BASE_PATH . '/assets');
+
 
 // Composer autoload
 require_once BASE_PATH . '/vendor/autoload.php';
